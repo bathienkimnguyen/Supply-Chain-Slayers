@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Supply Chain Comparison Dashboard</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    /* USC Marshall Brand Colors */
+    --cardinal:#990000;
+    --cardinal-dark:#6b0000;
+    --cardinal-deep:#4a0000;
+    --cardinal-light:#fce8e8;
+    --cardinal-mid:#cc0000;
+    --gold:#FFCC00;
+    --gold-light:#fff9d6;
+    --gold-dark:#c9a000;
+    /* Neutrals */
+    --bg:#F5F5F5;
+    --surface:#FFFFFF;
+    --surface2:#f0f0f0;
+    --border:#e0e0e0;
+    --text:#333333;
+    --text2:#555555;
+    --text3:#888888;
+    /* Semantic (kept for risk/status badges) */
+    --green:#15803d;--green-light:#dcfce7;
+    --amber:#b45309;--amber-light:#fef3c7;
+    --red:#b91c1c;--red-light:#fee2e2;
+    --teal:#0f766e;--teal-light:#ccfbf1;
+    /* Aliases for badge-blue (now cardinal-toned) */
+    --blue:var(--cardinal);--blue-light:var(--cardinal-light);--blue-mid:var(--cardinal-mid);
+    --navy:var(--cardinal-dark);
+    --radius:10px;--radius-lg:14px;
+    --shadow:0 1px 4px rgba(0,0,0,.07),0 2px 12px rgba(0,0,0,.05);
+    --transition:.18s ease;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  }
+  body{background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;min-height:100vh}
+  #app{display:grid;grid-template-rows:auto auto 1fr auto;min-height:100vh}
+
+  /* ── Header ── */
+  #header{background:var(--cardinal);color:#fff;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:3px solid var(--gold)}
+  #header h1{font-size:18px;font-weight:700;letter-spacing:-.2px}
+  #header p{font-size:12px;color:rgba(255,255,255,.7);margin-top:2px}
+  #header-logo{display:flex;align-items:center;gap:10px}
+  #usc-mark{display:flex;align-items:center;gap:6px;padding:4px 10px;background:rgba(255,255,255,.12);border-radius:6px;border:1px solid rgba(255,204,0,.3)}
+  #usc-mark span{font-size:12px;font-weight:700;color:var(--gold);letter-spacing:.5px}
+
+  /* ── Tab bar ── */
+  #tab-bar{background:var(--cardinal-dark);border-bottom:1px solid var(--cardinal-deep);padding:0 32px;display:flex;align-items:center;gap:4px}
+  .tab-btn{padding:12px 22px;font-size:13px;font-weight:600;color:rgba(255,255,255,.45);background:transparent;border:none;cursor:pointer;border-bottom:3px solid transparent;transition:all var(--transition);white-space:nowrap}
+  .tab-btn:hover{color:rgba(255,255,255,.75)}
+  .tab-btn.active{color:#fff;border-bottom-color:var(--gold)}
+  .tab-badge{display:inline-block;margin-left:7px;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;vertical-align:middle}
+  .badge-launch{background:rgba(255,204,0,.2);color:var(--gold)}
+  .badge-growth{background:rgba(255,204,0,.15);color:var(--gold)}
+  .badge-scale{background:rgba(255,255,255,.12);color:rgba(255,255,255,.7)}
+
+  /* ── Layout ── */
+  #main{display:grid;grid-template-columns:300px 1fr;gap:0;align-items:start}
+  #sidebar{background:var(--surface);border-right:1px solid var(--border);padding:18px 16px;height:calc(100vh - 108px);overflow-y:auto;position:sticky;top:0}
+  #content{padding:20px 24px;overflow-y:auto}
+  footer{background:var(--surface);border-top:3px solid var(--cardinal);padding:10px 32px;font-size:11px;color:var(--text3);display:flex;align-items:center;justify-content:space-between}
+  .footer-usc{font-weight:700;color:var(--cardinal)}
+
+  /* ── Controls ── */
+  .ctrl-group{margin-bottom:13px}
+  .ctrl-group label{display:block;font-size:11px;font-weight:600;color:var(--text2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px}
+  select{width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);color:var(--text);font-size:13px;outline:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888888' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;cursor:pointer;transition:border-color var(--transition)}
+  select:hover{border-color:#aaa}
+  select:focus{border-color:var(--cardinal);box-shadow:0 0 0 3px rgba(153,0,0,.1)}
+  .seg-buttons{display:flex;gap:4px}
+  .seg-btn{flex:1;padding:6px 4px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-size:12px;border-radius:7px;cursor:pointer;transition:all var(--transition);text-align:center}
+  .seg-btn.active{background:var(--cardinal);color:#fff;border-color:var(--cardinal)}
+  .seg-btn:disabled{opacity:.3;cursor:not-allowed;pointer-events:none}
+  .sidebar-btn{width:100%;padding:8px 12px;border-radius:var(--radius);font-size:12px;font-weight:500;cursor:pointer;transition:all var(--transition);border:1px solid var(--border);margin-bottom:5px}
+  .btn-reset{background:var(--surface);color:var(--text2)}
+  .btn-reset:hover{background:var(--surface2);border-color:#aaa}
+  .btn-rec{background:var(--cardinal);color:#fff;border-color:var(--cardinal)}
+  .btn-rec:hover{background:var(--cardinal-dark)}
+  .sidebar-divider{border:none;border-top:1px solid var(--border);margin:12px 0}
+  .sidebar-note{font-size:11px;color:var(--text3);font-style:italic;padding:6px 8px;background:var(--surface2);border-radius:6px;border-left:2px solid var(--cardinal);margin-bottom:12px}
+
+  /* ── KPI Grid ── */
+  #kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+  .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;transition:box-shadow var(--transition)}
+  .kpi-card:hover{box-shadow:var(--shadow)}
+  .kpi-label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+  .kpi-value{font-size:22px;font-weight:700;color:var(--text);line-height:1}
+  .kpi-sub{font-size:11px;color:var(--text3);margin-top:4px}
+  .kpi-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;margin-top:5px}
+  .badge-green{background:var(--green-light);color:var(--green)}
+  .badge-amber{background:var(--amber-light);color:var(--amber)}
+  .badge-red{background:var(--red-light);color:var(--red)}
+  .badge-blue{background:var(--cardinal-light);color:var(--cardinal)}
+  .badge-teal{background:var(--teal-light);color:var(--teal)}
+  .badge-slate{background:#f1f5f9;color:#475569}
+  .kpi-card-primary{border:1.5px solid var(--cardinal)!important}
+  .kpi-card-primary .kpi-value{color:var(--cardinal)}
+  .kpi-card-primary .kpi-label{color:var(--cardinal)}
+
+  /* ── Recommendation box ── */
+  #rec-box{background:linear-gradient(135deg,var(--cardinal-deep) 0%,var(--cardinal-dark) 100%);border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:20px;display:flex;align-items:flex-start;gap:14px;border-left:4px solid var(--gold)}
+  #rec-icon{width:38px;height:38px;background:rgba(255,204,0,.18);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+  #rec-title{font-size:10px;font-weight:600;color:rgba(255,204,0,.7);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+  #rec-text{font-size:14px;font-weight:600;color:#fff;line-height:1.4}
+  #rec-sub{font-size:12px;color:rgba(255,255,255,.65);margin-top:4px;line-height:1.5}
+  #rec-tag{display:inline-block;margin-top:7px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.2px}
+  .tag-launch{background:rgba(255,204,0,.22);color:var(--gold)}
+  .tag-growth{background:rgba(255,204,0,.22);color:var(--gold)}
+  .tag-scale{background:rgba(255,255,255,.15);color:rgba(255,255,255,.85)}
+
+  /* ── Section headers ── */
+  .section-header{font-size:12px;font-weight:700;color:var(--cardinal);text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .section-header::after{content:'';flex:1;height:1px;background:var(--border)}
+
+  /* ── Charts & cards ── */
+  #charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+  #bottom-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px 20px}
+  .card-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px}
+  .card-sub{font-size:11px;color:var(--text3);margin-bottom:14px}
+  #radar-canvas{display:block;margin:0 auto}
+
+  /* ── Risk bars ── */
+  .risk-row{margin-bottom:10px}
+  .risk-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+  .risk-name{font-size:12px;color:var(--text2);font-weight:500}
+  .risk-score-txt{font-size:11px;font-weight:600}
+  .risk-track{background:var(--surface2);border-radius:4px;height:8px;overflow:hidden}
+  .risk-fill{height:100%;border-radius:4px;transition:width .4s ease}
+
+  /* ── Scenario table ── */
+  .scenario-table{width:100%;border-collapse:collapse;font-size:12px}
+  .scenario-table th{text-align:left;padding:8px 10px;background:var(--surface2);color:var(--text2);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--border)}
+  .scenario-table td{padding:9px 10px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:top}
+  .scenario-table tr:last-child td{border-bottom:none}
+  .scenario-table tr:hover td{background:var(--surface2)}
+
+  /* ── Insights ── */
+  .insight-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+  .insight-item:last-child{border-bottom:none;padding-bottom:0}
+  .insight-dot{width:6px;height:6px;border-radius:50%;background:var(--cardinal);flex-shrink:0;margin-top:5px}
+  .insight-text{font-size:13px;color:var(--text);line-height:1.5}
+
+  /* ── Dim legend ── */
+  .dim-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:12px}
+  .dim-color{width:10px;height:10px;border-radius:2px;flex-shrink:0}
+  .dim-name{width:160px;color:var(--text2);font-size:11px}
+  .dim-bar-wrap{flex:1;background:var(--surface2);border-radius:3px;height:6px}
+  .dim-bar{height:100%;border-radius:3px;transition:width .4s ease}
+  .dim-val{width:28px;text-align:right;color:var(--text);font-weight:600;font-size:12px}
+
+  /* ── Legend ── */
+  .score-legend{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+  .legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)}
+  .legend-dot{width:8px;height:8px;border-radius:2px}
+  .helper{font-size:11px;color:var(--text3);margin-top:2px;line-height:1.4}
+
+  /* ── Presentation mode ── */
+  body.present-mode #sidebar{display:none}
+  body.present-mode #main{grid-template-columns:1fr}
+  body.present-mode #kpi-grid{grid-template-columns:repeat(3,1fr)}
+  body.present-mode #charts-grid{grid-template-columns:1fr 1fr}
+  body.present-mode .card{padding:22px 24px}
+  body.present-mode .kpi-card{padding:18px 20px}
+  body.present-mode .kpi-value{font-size:28px}
+  body.present-mode .kpi-label{font-size:12px}
+  body.present-mode #content{padding:24px 40px}
+  body.present-mode .present-hint{display:none!important}
+  body.present-mode #btn-present-text::after{content:' (Exit)'}
+
+  @media(max-width:1100px){
+    #kpi-grid{grid-template-columns:repeat(3,1fr)}
+    #charts-grid{grid-template-columns:1fr}
+    #bottom-row{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+<header id="header">
+  <div id="header-logo">
+    <div id="usc-mark">
+      <span>USC MARSHALL</span>
+    </div>
+    <div>
+      <h1>Bootstrapping a Supply Chain &mdash; Comparison Dashboard</h1>
+      <p>European Baby Formula Import &bull; Scores calibrated from Excel scenario workbooks &bull; Validated combinations only</p>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <div style="font-size:11px;color:rgba(255,255,255,.45);text-align:right;line-height:1.6" class="present-hint">Adjust controls left<br>to update results</div>
+    <button class="sidebar-btn btn-reset" onclick="togglePresent()" style="width:auto;padding:8px 16px;margin:0;background:rgba(255,255,255,.1);color:rgba(255,255,255,.8);border-color:rgba(255,255,255,.2)">
+      <span id="btn-present-text">Presentation Mode</span>
+    </button>
+  </div>
+</header>
+
+<div id="tab-bar">
+  <button class="tab-btn active" data-tab="low" onclick="switchTab('low')">
+    Low Demand <span class="tab-badge badge-launch">Launch Stage</span>
+  </button>
+  <button class="tab-btn" data-tab="mod" onclick="switchTab('mod')">
+    Moderate Demand <span class="tab-badge badge-growth">Growth Stage</span>
+  </button>
+  <button class="tab-btn" data-tab="high" onclick="switchTab('high')">
+    High Demand <span class="tab-badge badge-scale">Scaled Stage</span>
+  </button>
+  <div style="flex:1"></div>
+  <span style="font-size:11px;color:rgba(255,255,255,.3);padding:0 8px;align-self:center">Supply Chain Comparison Dashboard</span>
+</div>
+
+<div id="main">
+<aside id="sidebar">
+  <div style="margin-bottom:10px">
+    <button class="sidebar-btn btn-rec" id="btn-rec" onclick="loadRec()">&#9654; Load Recommended Scenario</button>
+    <button class="sidebar-btn btn-reset" onclick="resetToFirst()">&#8635; Reset to First Scenario</button>
+  </div>
+  <hr class="sidebar-divider">
+  <div class="sidebar-note">Options limited to calibrated scenario combinations</div>
+  <div class="ctrl-group">
+    <label>Fulfillment Model</label>
+    <select id="fulfillment" onchange="onFieldChange('fulfillment')"></select>
+  </div>
+  <div class="ctrl-group">
+    <label>Shipping Mode</label>
+    <select id="shipping" onchange="onFieldChange('shipping')"></select>
+  </div>
+  <div class="ctrl-group">
+    <label>Sales Channel</label>
+    <select id="channel" onchange="onFieldChange('channel')"></select>
+  </div>
+  <div class="ctrl-group">
+    <label>Sourcing Strategy</label>
+    <select id="sourcing" onchange="onFieldChange('sourcing')"></select>
+  </div>
+  <div class="ctrl-group">
+    <label>Inventory Strategy</label>
+    <select id="inventory" onchange="onFieldChange('inventory')"></select>
+  </div>
+  <div class="ctrl-group">
+    <label>Compliance Investment</label>
+    <div class="seg-buttons" id="compliance-seg">
+      <button class="seg-btn" data-val="low" onclick="setSeg('compliance',this)">Low</button>
+      <button class="seg-btn active" data-val="med" onclick="setSeg('compliance',this)">Med</button>
+      <button class="seg-btn" data-val="high" onclick="setSeg('compliance',this)">High</button>
+    </div>
+    <p class="helper">FDA compliance reduces regulatory risk but adds per-unit cost.</p>
+  </div>
+  <hr class="sidebar-divider">
+  <div class="score-legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#15803d"></div>Green = Strong / Low Risk</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#0f766e"></div>Teal = Stage-Appropriate</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#b45309"></div>Amber = Caution / Tradeoff</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#b91c1c"></div>Red = High Risk / Poor Fit</div>
+  </div>
+</aside>
+
+<section id="content">
+  <div id="rec-box">
+    <div id="rec-icon">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <path d="M10 2L12.4 7.2L18 8L14 12L15.2 18L10 15.2L4.8 18L6 12L2 8L7.6 7.2L10 2Z" fill="#FFCC00"/>
+      </svg>
+    </div>
+    <div>
+      <div id="rec-title">Strategy Assessment</div>
+      <div id="rec-text">Loading...</div>
+      <div id="rec-sub"></div>
+      <div id="rec-tag" style="display:none"></div>
+    </div>
+  </div>
+
+  <div class="section-header">Performance Metrics <span style="font-size:10px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--text3)">— calibrated from scored scenario workbooks</span></div>
+  <div id="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">Total Cost / Can</div>
+      <div class="kpi-value" id="kpi-cost">—</div>
+      <div class="kpi-sub">All-in cost incl. landed + other costs</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Contribution Margin</div>
+      <div class="kpi-value" id="kpi-margin">—</div>
+      <div class="kpi-sub" id="kpi-margin-sub">Directional commercial margin</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Delivery Lead Time</div>
+      <div class="kpi-value" id="kpi-lead">—</div>
+      <div class="kpi-sub">Estimated days to customer</div>
+      <div id="kpi-lead-badge"></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Compliance Risk</div>
+      <div class="kpi-value" id="kpi-comp">—</div>
+      <div id="kpi-comp-badge"></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Spoilage / Exp. Risk</div>
+      <div class="kpi-value" id="kpi-spoil">—</div>
+      <div id="kpi-spoil-badge"></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Supply Resilience</div>
+      <div class="kpi-value" id="kpi-res">—</div>
+      <div id="kpi-res-badge"></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Scale Readiness</div>
+      <div class="kpi-value" id="kpi-scale">—</div>
+      <div id="kpi-scale-badge"></div>
+    </div>
+    <div class="kpi-card kpi-card-primary">
+      <div class="kpi-label">Overall Strategic Fit</div>
+      <div class="kpi-value" id="kpi-overall">—</div>
+      <div id="kpi-overall-badge"></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Energy Vulnerability</div>
+      <div class="kpi-value" id="kpi-energy">—</div>
+      <div class="kpi-sub">Derived from shipping &amp; network structure</div>
+      <div id="kpi-energy-badge"></div>
+    </div>
+  </div>
+
+  <div class="section-header">Comparative Performance Analysis</div>
+  <div id="charts-grid">
+    <div class="card">
+      <div class="card-title">Relative Performance Profile (0&ndash;100)</div>
+      <div class="card-sub">Scores are normalized relative to scenarios within this dashboard</div>
+      <canvas id="radar-canvas" width="380" height="265"></canvas>
+      <div style="margin-top:10px" id="dim-legend"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Risk Exposure Map</div>
+      <div class="card-sub">Higher bar = higher risk exposure in that category</div>
+      <div id="risk-bars"></div>
+    </div>
+  </div>
+
+  <div id="bottom-row">
+    <div class="card">
+      <div class="card-title">Scenario Summary</div>
+      <div class="card-sub">Strategic fit assessment for current configuration</div>
+      <table class="scenario-table"><thead><tr><th>Dimension</th><th>Assessment</th></tr></thead><tbody id="scenario-tbody"></tbody></table>
+    </div>
+    <div class="card">
+      <div class="card-title">Strategic Insight</div>
+      <div class="card-sub">Dynamic observations based on current configuration</div>
+      <div id="insights-list"></div>
+    </div>
+  </div>
+</section>
+</div>
+
+<footer>
+  <span><span class="footer-usc">USC Marshall</span> &mdash; Supply Chain Comparison Dashboard &bull; Graduate Case Competition</span>
+  <span>All outputs are directional estimates for strategic case analysis only &mdash; not operational forecasts</span>
+</footer>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// CALIBRATED DATASETS  (source of truth — energy column removed)
+// Row: [fulfillment, shipping, channel, compliance, sourcing, inventory,
+//       cost, margin_decimal, lead_days, compRisk, spoilRisk, resilience, scaleReady, overall]
+// ═══════════════════════════════════════════════════════════════════════════════
+const DATA = {
+// ─── LOW DEMAND — updated from: Copy_of_supply_chain_simulator_LOW_scored_FINAL.xlsx ───
+low: [
+['3pl','air','amazon','med','dual','safety',14.18,0.23,10,22,28,55,80,72],
+['3pl','air','dtc','med','dual','safety',14.18,0.208,10,22,28,55,75,72],
+['3pl','air','dtc','med','multi','safety',14.58,0.199,12,20,28,70,82,70],
+['3pl','ocean','dtc','med','dual','safety',12.26,0.251,28,22,38,55,72,66],
+['batch','air','amazon','med','dual','safety',15.18,0.207,10,22,32,55,70,73],
+['batch','air','amazon','med','single','lean',24.03,0.243,8,45,25,30,60,57],
+['batch','air','clinics','low','single','lean',15.18,0.205,4,40,22,66,68,75],
+['batch','air','clinics','med','single','lean',15.18,0.195,4,30,20,66,72,77],
+['batch','air','dtc','low','single','lean',15.18,0.232,7,55,28,30,50,74],
+['batch','air','dtc','med','dual','safety',15.18,0.185,9,22,32,55,65,73],
+['batch','air','dtc','med','multi','safety',15.58,0.176,11,22,32,70,72,71],
+['batch','air','dtc','med','single','lean',15.18,0.22,7,45,25,30,55,74],
+['batch','air','niche','low','single','lean',23.33,0.206,4,30,20,66,72,63],
+['batch','ocean','amazon','med','single','lean',11.71,0.286,25,45,35,25,55,71],
+['batch','ocean','dtc','med','dual','safety',13.26,0.229,26,22,40,55,62,68],
+['batch','ocean','dtc','med','single','lean',11.71,0.264,24,45,35,25,50,71],
+['batch','parcel','dtc','med','single','lean',12.63,0.243,12,45,28,30,52,76],
+['drop','air','amazon','med','single','drop',24.03,0.006,8,50,15,30,48,39],
+['drop','air','clinics','med','single','drop',15.18,0.195,7,30,20,58,72,74],
+['drop','air','dtc','low','single','drop',15.18,0.185,7,30,20,58,72,76],
+['drop','air','dtc','med','single','drop',24.03,-0.016,7,45,15,30,32,38],
+['drop','air','niche','low','single','drop',23.33,0.206,7,30,20,58,72,60],
+['drop','ocean','dtc','med','single','drop',22.11,0.028,22,45,30,25,28,34],
+['drop','parcel','amazon','low','single','drop',22.53,0.04,11,60,20,25,35,39],
+['drop','parcel','amazon','med','dual','drop',23.38,0.021,13,45,20,45,48,38],
+['drop','parcel','amazon','med','multi','drop',24.58,-0.006,14,25,22,65,55,36],
+['drop','parcel','amazon','med','single','drop',23.03,0.029,11,50,20,25,45,39],
+['drop','parcel','dtc','low','single','drop',22.53,0.018,10,50,20,25,20,40],
+['drop','parcel','dtc','med','dual','drop',23.38,-0.001,12,40,20,45,35,38],
+['drop','parcel','dtc','med','multi','drop',23.78,-0.01,13,40,22,65,40,36],
+['drop','parcel','dtc','med','single','drop',23.03,0.007,10,45,20,25,30,39],
+['drop','parcel','ebay','low','single','drop',22.53,0.224,10,65,22,25,18,50],
+['drop','parcel','ebay','med','single','drop',23.83,0.195,11,25,22,25,28,49],
+['fba','air','amazon','low','single','lean',13.63,0.197,9,60,28,30,65,68],
+['fba','air','amazon','med','dual','safety',15.68,0.15,11,22,28,55,78,64],
+['fba','air','amazon','med','multi','safety',16.08,0.141,13,20,28,70,82,62],
+['fba','air','amazon','med','single','lean',14.93,0.168,9,25,22,30,72,68],
+['fba','air','amazon','med','single','safety',15.33,0.158,9,25,28,30,78,65],
+['fba','air','dtc','med','single','safety',15.33,0.136,9,25,28,30,70,65],
+['fba','ocean','amazon','med','dual','safety',14.56,0.176,28,22,38,55,72,55],
+['fba','ocean','amazon','med','single','safety',13.41,0.202,27,25,38,25,72,59],
+['fba','ocean','dtc','med','dual','safety',13.76,0.172,28,22,38,55,70,58]
+],
+// ─── MODERATE DEMAND — unchanged ───────────────────────────────────────────
+mod: [
+['3pl','air','amazon','high','dual','lean',27.74,0.24,5,18,28,65,78,72],
+['3pl','air','amazon','low','single','lean',37.5,0.22,5,52,32,50,58,61],
+['3pl','air','amazon','low','single','safety',48.0,0.0,8,68,33,22,33,20],
+['3pl','air','amazon','med','dual','lean',25.69,0.27,5,38,28,65,71,71],
+['3pl','air','amazon','med','dual','safety',26.49,0.26,4,38,20,72,73,78],
+['3pl','air','amazon','med','single','lean',25.05,0.28,5,46,32,52,68,69],
+['3pl','air','dtc','med','single','lean',25.89,0.22,5,46,32,50,63,62],
+['batch','air','dtc','med','single','lean',23.45,0.3,6,50,30,48,55,65],
+['fba','air','amazon','med','single','lean',29.46,0.17,2,46,30,55,74,69],
+['onedc','air','niche','high','dual','lean',35.2,0.3,4,34,22,70,47,74],
+['onedc','air','niche','high','single','lean',35.2,0.3,4,33,28,56,51,73]
+],
+// ─── HIGH DEMAND — updated from: Copy_of_high_demand_scenario_rating_FINAL.xlsx ───
+high: [
+['3pl','ocean','amazon','high','multi','safety',32.56,0.26,30,25,40,90,81,68],
+['3pl','ocean','amazon','med','dual','safety',31.16,0.292,30,40,25,73,72,70],
+['3pl','ocean','amazon','med','single','safety',30.81,0.3,30,35,35,46,68,68],
+['3pl','ocean','dtc','high','dual','lean',32.49,0.262,41,30,45,65,77,51],
+['3pl','ocean','dtc','high','dual','safety',32.59,0.259,41,30,15,73,77,55],
+['3pl','ocean','dtc','high','multi','lean',32.79,0.255,44,25,45,82,81,49],
+['3pl','ocean','dtc','high','multi','safety',32.89,0.253,44,25,15,90,81,54],
+['3pl','ocean','dtc','med','single','lean',31.44,0.285,38,55,45,38,68,50],
+['3pl','ocean','dtc','med','single','safety',31.54,0.283,38,55,15,46,68,55],
+['3pl','ocean','niche','high','dual','lean',27.81,0.368,41,30,35,65,77,67],
+['3pl','ocean','niche','high','dual','safety',27.91,0.366,41,30,35,73,77,67],
+['3pl','ocean','niche','high','multi','lean',28.11,0.361,44,25,45,82,81,63],
+['3pl','ocean','niche','high','multi','safety',28.21,0.359,44,25,45,90,81,64],
+['3pl','ocean','niche','med','single','lean',26.76,0.392,38,55,25,38,68,68],
+['3pl','ocean','niche','med','single','safety',26.86,0.39,38,55,25,46,68,69],
+['fba','air','amazon','high','multi','safety',36.06,0.18,45,30,40,90,85,38],
+['fba','air','amazon','med','dual','safety',34.66,0.212,42,50,25,73,76,43],
+['fba','air','amazon','med','single','safety',34.31,0.22,39,60,25,46,72,43],
+['onedc','ocean','amazon','high','multi','safety',32.36,0.265,46,25,40,90,68,48],
+['onedc','ocean','amazon','med','dual','safety',30.96,0.296,43,45,25,73,59,53],
+['onedc','ocean','amazon','med','single','safety',30.61,0.304,40,55,25,46,55,53],
+['onedc','ocean','dtc','high','dual','lean',32.29,0.266,43,30,45,65,64,47],
+['onedc','ocean','dtc','high','dual','safety',32.39,0.264,43,30,15,73,64,52],
+['onedc','ocean','dtc','high','multi','lean',32.59,0.259,46,25,45,82,68,45],
+['onedc','ocean','dtc','high','multi','safety',32.69,0.257,46,25,15,90,68,50],
+['onedc','ocean','dtc','med','single','lean',31.24,0.29,40,55,45,38,55,47],
+['onedc','ocean','dtc','med','single','safety',31.34,0.288,40,55,15,46,55,52],
+['onedc','ocean','niche','high','dual','lean',27.61,0.373,43,30,45,65,64,62],
+['onedc','ocean','niche','high','dual','safety',27.71,0.37,43,30,15,73,64,67],
+['onedc','ocean','niche','high','multi','lean',27.91,0.366,46,25,45,82,68,60],
+['onedc','ocean','niche','high','multi','safety',28.01,0.363,46,25,15,90,68,65],
+['onedc','ocean','niche','med','single','lean',26.56,0.396,40,55,45,38,55,62],
+['onedc','ocean','niche','med','single','safety',26.66,0.394,40,55,15,46,55,67],
+['rdcs','ocean','amazon','high','multi','safety',35.36,0.196,44,25,40,90,95,43],
+['rdcs','ocean','amazon','med','dual','safety',33.96,0.228,41,45,25,73,86,48],
+['rdcs','ocean','amazon','med','single','safety',33.61,0.236,38,55,25,46,82,49],
+['rdcs','ocean','dtc','high','dual','lean',35.29,0.198,41,30,45,65,91,43],
+['rdcs','ocean','dtc','high','dual','safety',35.39,0.196,41,30,15,73,91,48],
+['rdcs','ocean','dtc','high','multi','lean',35.59,0.191,44,25,45,82,95,41],
+['rdcs','ocean','dtc','high','multi','safety',35.69,0.189,44,25,15,90,95,46],
+['rdcs','ocean','dtc','med','single','lean',34.24,0.222,38,55,45,38,82,43],
+['rdcs','ocean','dtc','med','single','safety',34.34,0.22,38,55,15,46,82,48],
+['rdcs','ocean','niche','high','dual','lean',30.61,0.304,41,30,45,65,91,58],
+['rdcs','ocean','niche','high','dual','safety',30.71,0.302,41,30,15,73,91,63],
+['rdcs','ocean','niche','high','multi','lean',30.91,0.298,44,25,45,82,95,56],
+['rdcs','ocean','niche','high','multi','safety',31.01,0.295,44,25,15,90,95,61],
+['rdcs','ocean','niche','med','single','lean',29.56,0.328,38,55,45,38,82,58],
+['rdcs','ocean','niche','med','single','safety',29.66,0.326,38,55,15,46,82,63]
+]};
+
+// Column indices
+const F=0,SH=1,CH=2,CO=3,SR=4,IN=5,COST=6,MGN=7,LEAD=8,CRISK=9,SRISK=10,RES=11,SCL=12,OVR=13;
+
+// Recommended scenarios per tab
+// LOW rec: batch/air/clinics/low/single/lean — practical optimal launch-stage setup (75/100)
+const REC = {
+  low:  {fulfillment:'batch',shipping:'air',channel:'clinics',compliance:'low',sourcing:'single',inventory:'lean'},
+  mod:  {fulfillment:'3pl', shipping:'air', channel:'amazon',compliance:'med',sourcing:'dual', inventory:'safety'},
+  high: {fulfillment:'3pl', shipping:'ocean',channel:'amazon',compliance:'med',sourcing:'dual',inventory:'safety'}
+};
+
+// Per-tab state
+const tabState = {
+  low:  {fulfillment:'batch',shipping:'air',channel:'clinics',compliance:'low',sourcing:'single',inventory:'lean'},
+  mod:  {fulfillment:'3pl', shipping:'air', channel:'amazon',compliance:'med',sourcing:'dual', inventory:'safety'},
+  high: {fulfillment:'3pl', shipping:'ocean',channel:'amazon',compliance:'med',sourcing:'dual',inventory:'safety'}
+};
+
+let activeTab = 'low';
+function state() { return tabState[activeTab]; }
+function pool()  { return DATA[activeTab]; }
+
+// ─── Option labels ────────────────────────────────────────────────────────────
+const LABELS = {
+  fulfillment:{drop:'Drop-shipping',batch:'Small Batch Import','3pl':'3PL',fba:'Amazon FBA',onedc:'One DC',rdcs:'Multi-node RDCs'},
+  shipping:   {parcel:'Parcel',air:'Air',ocean:'Ocean'},
+  channel:    {dtc:'Direct-to-Consumer (DTC)',amazon:'Amazon',ebay:'eBay',niche:'Niche High-End Retailer',clinics:'Clinics'},
+  sourcing:   {single:'Single-country',dual:'Dual-country',multi:'Multi-country'},
+  inventory:  {drop:'Drop-ship',lean:'Lean Inventory',safety:'Safety Stock'}
+};
+const FIELD_IDX = {fulfillment:F,shipping:SH,channel:CH,sourcing:SR,inventory:IN,compliance:CO};
+const CASCADE = ['fulfillment','shipping','channel','sourcing','inventory','compliance'];
+
+// ─── Tab switching ────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  syncAllDropdowns();
+  update();
+}
+
+// ─── Cascading dropdowns ──────────────────────────────────────────────────────
+function getValid(constraints, field) {
+  const vals = new Set();
+  for (const row of pool()) {
+    let ok = true;
+    for (const [k,v] of Object.entries(constraints)) {
+      if (row[FIELD_IDX[k]] !== v) { ok = false; break; }
+    }
+    if (ok) vals.add(row[FIELD_IDX[field]]);
+  }
+  return [...vals];
+}
+
+function buildOpts(field, vals) {
+  return vals.map(v => `<option value="${v}">${LABELS[field]?.[v]||v}</option>`).join('');
+}
+
+function syncAllDropdowns() {
+  const s = state();
+  const constraints = {};
+  for (const field of CASCADE) {
+    const valid = getValid(constraints, field);
+    if (field === 'compliance') {
+      document.querySelectorAll('#compliance-seg .seg-btn').forEach(b => {
+        b.disabled = !valid.includes(b.dataset.val);
+      });
+      if (!valid.includes(s.compliance)) s.compliance = valid[0] || 'med';
+      document.querySelectorAll('#compliance-seg .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.val === s.compliance));
+    } else {
+      const el = document.getElementById(field);
+      if (el) {
+        el.innerHTML = buildOpts(field, valid);
+        if (valid.includes(s[field])) el.value = s[field];
+        else { el.value = valid[0] || ''; s[field] = valid[0] || ''; }
+      }
+    }
+    constraints[field] = s[field];
+  }
+}
+
+function cascadeFrom(changed) {
+  const s = state();
+  const fromIdx = CASCADE.indexOf(changed);
+  const constraints = {};
+  for (let i = 0; i <= fromIdx; i++) constraints[CASCADE[i]] = s[CASCADE[i]];
+  for (let i = fromIdx + 1; i < CASCADE.length; i++) {
+    const field = CASCADE[i];
+    const valid = getValid(constraints, field);
+    if (field === 'compliance') {
+      document.querySelectorAll('#compliance-seg .seg-btn').forEach(b => {
+        b.disabled = !valid.includes(b.dataset.val);
+      });
+      if (!valid.includes(s.compliance)) {
+        s.compliance = valid[0] || 'med';
+        document.querySelectorAll('#compliance-seg .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.val === s.compliance));
+      }
+    } else {
+      const el = document.getElementById(field);
+      if (!el) { constraints[field] = s[field]; continue; }
+      el.innerHTML = buildOpts(field, valid);
+      if (valid.includes(s[field])) el.value = s[field];
+      else { el.value = valid[0] || ''; s[field] = valid[0] || ''; }
+    }
+    constraints[field] = s[field];
+  }
+  update();
+}
+
+function onFieldChange(field) {
+  const el = document.getElementById(field);
+  if (el) state()[field] = el.value;
+  cascadeFrom(field);
+}
+
+function setSeg(key, btn) {
+  if (btn.disabled) return;
+  state()[key] = btn.dataset.val;
+  btn.parentElement.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  update();
+}
+
+// ─── Lookup ───────────────────────────────────────────────────────────────────
+function lookup() {
+  const s = state();
+  for (const row of pool()) {
+    if (row[F]===s.fulfillment && row[SH]===s.shipping && row[CH]===s.channel &&
+        row[CO]===s.compliance && row[SR]===s.sourcing && row[IN]===s.inventory)
+      return row;
+  }
+  let best = pool()[0], bestS = -1;
+  for (const row of pool()) {
+    let sc = (row[F]===s.fulfillment?4:0)+(row[SH]===s.shipping?3:0)+(row[CH]===s.channel?3:0)+(row[CO]===s.compliance?3:0)+(row[SR]===s.sourcing?2:0)+(row[IN]===s.inventory?2:0);
+    if (sc > bestS) { bestS = sc; best = row; }
+  }
+  return best;
+}
+
+// ─── Recommendation helpers ───────────────────────────────────────────────────
+function isRec() {
+  const s = state(), r = REC[activeTab];
+  return s.fulfillment===r.fulfillment && s.shipping===r.shipping && s.channel===r.channel &&
+         s.compliance===r.compliance && s.sourcing===r.sourcing && s.inventory===r.inventory;
+}
+function loadRec() { Object.assign(state(), REC[activeTab]); syncAllDropdowns(); update(); }
+function resetToFirst() {
+  const row = pool()[0];
+  Object.assign(state(), {fulfillment:row[F],shipping:row[SH],channel:row[CH],compliance:row[CO],sourcing:row[SR],inventory:row[IN]});
+  syncAllDropdowns(); update();
+}
+
+// ─── Label helpers ────────────────────────────────────────────────────────────
+function riskLabel(r) {
+  if (r>=70) return ['High Risk','badge-red'];
+  if (r>=50) return ['Moderate','badge-amber'];
+  if (r>=30) return ['Low-Mod','badge-teal'];
+  return ['Low Risk','badge-green'];
+}
+function scaleLabel(s) {
+  if (activeTab==='low') {
+    if (s>=65) return ['Growth-Ready','badge-green'];
+    if (s>=35) return ['Launch-Appropriate','badge-teal'];
+    return ['Under-Invested','badge-red'];
+  }
+  if (activeTab==='mod') {
+    if (s>=65) return ['Growth-Ready','badge-green'];
+    if (s>=48) return ['Adequate','badge-teal'];
+    if (s>=35) return ['Needs Upgrade','badge-amber'];
+    return ['Fragile','badge-red'];
+  }
+  if (s>=70) return ['Scale-Ready','badge-green'];
+  if (s>=52) return ['Partial','badge-amber'];
+  return ['Fragile','badge-red'];
+}
+function resLabel(s) {
+  if (s>=68) return ['Strong','badge-green'];
+  if (s>=45) return ['Adequate','badge-teal'];
+  if (s>=30) return ['Low','badge-amber'];
+  return ['Fragile','badge-red'];
+}
+function overallLabel(s) {
+  if (s>=72) return ['Well-Aligned','badge-green'];
+  if (s>=53) return ['Viable for Stage','badge-teal'];
+  if (s>=38) return ['Marginal','badge-amber'];
+  return ['Poor Fit','badge-red'];
+}
+function setBadge(id, text, cls) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = `<span class="kpi-badge ${cls}">${text}</span>`;
+}
+
+// ─── Derived Energy Vulnerability ────────────────────────────────────────────
+function calcEnergy() {
+  const s = state();
+  const ship = s.shipping==='air'?55 : s.shipping==='parcel'?35 : 20;
+  const src  = s.sourcing==='single'?5 : s.sourcing==='dual'?10 : 15;
+  const ful  = ['drop','batch'].includes(s.fulfillment)?0 : ['3pl','fba'].includes(s.fulfillment)?5 : s.fulfillment==='onedc'?8 : 12;
+  const dem  = activeTab==='low'?0 : activeTab==='mod'?5 : 10;
+  return Math.min(100, Math.max(0, ship+src+ful+dem));
+}
+
+// ─── Recommendation box ───────────────────────────────────────────────────────
+const REC_MSGS = {
+  low: {
+    title: 'Recommended practical launch-stage setup — optimal fit for a capital-efficient first 6 months',
+    sub:   'Small Batch Import with Air shipping, Clinics channel, Low compliance, Single-country sourcing, and Lean Inventory achieves an overall fit score of 75/100 in the calibrated low-demand workbook. Clinics is the preferred early-stage channel for premium European baby formula — targeted, relationship-driven, and lower in competitive intensity than Amazon or DTC. Low compliance investment is realistic at launch volumes. This setup maximizes speed, capital efficiency, and channel fit while avoiding premature infrastructure commitment.',
+    tag:   '★ Recommended for first 6 months',
+    cls:   'tag-launch'
+  },
+  mod: {
+    title: 'Recommended growth-stage setup — highest strategic fit in the moderate-demand workbook',
+    sub:   '3PL with Air shipping, Amazon channel, Medium compliance, Dual-country sourcing, and Safety Stock achieves the top overall fit score (78/100) in the calibrated moderate-demand workbook. This setup is appropriate after demand stabilizes and supports better service levels, operational control, and scale readiness.',
+    tag:   '★ Recommended after demand stabilizes',
+    cls:   'tag-growth'
+  },
+  high: {
+    title: 'Recommended high-demand setup — highest strategic fit in the high-demand workbook',
+    sub:   '3PL with Ocean freight, Amazon channel, Medium compliance, Dual-country sourcing, and Safety Stock achieves the top overall fit score (70/100) in the calibrated high-demand workbook. At scale, ocean freight is cost-essential, and dual-country sourcing provides the supply resilience needed to sustain high-volume operations reliably.',
+    tag:   '★ Recommended for scaled operations',
+    cls:   'tag-scale'
+  }
+};
+
+function buildRec(row) {
+  const ovr = row[OVR];
+  const setMsg = (title, sub, tag, cls) => {
+    document.getElementById('rec-text').textContent = title;
+    document.getElementById('rec-sub').textContent  = sub;
+    const tagEl = document.getElementById('rec-tag');
+    if (tag) { tagEl.textContent = tag; tagEl.className = cls; tagEl.style.display = 'inline-block'; }
+    else tagEl.style.display = 'none';
+  };
+  if (isRec()) { const m = REC_MSGS[activeTab]; return setMsg(m.title, m.sub, m.tag, m.cls); }
+  const stageMap = {low:'low-demand', mod:'moderate-demand', high:'high-demand'};
+  const stg = stageMap[activeTab];
+  const recTip = {
+    low:  'Load the recommended scenario (Small Batch, Air, Clinics, Low compliance, Single-country, Lean Inventory) to see the optimal practical launch-stage configuration.',
+    mod:  'Load the recommended scenario (3PL, Air, Amazon, Medium compliance, Dual-country, Safety Stock) to see the top-scoring configuration.',
+    high: 'Load the recommended scenario (3PL, Ocean, Amazon, Medium compliance, Dual-country, Safety Stock) to see the top-scoring configuration.'
+  }[activeTab];
+  if (ovr>=72) return setMsg(`Well-aligned for ${stg} — near the top of the workbook`, 'Strong overall fit with manageable tradeoffs.', null, null);
+  if (ovr>=60) return setMsg(`Viable for ${stg} — workable structure with clear upgrade priorities`, recTip, null, null);
+  if (ovr>=45) return setMsg(`Marginal for ${stg} — structural gaps relative to the recommended setup`, recTip, null, null);
+  setMsg(`Poor fit for ${stg} — this configuration scores in the lower range of the workbook`, recTip, null, null);
+}
+
+// ─── Insights ─────────────────────────────────────────────────────────────────
+function buildInsights(row) {
+  const s = state();
+  const ins = [];
+  if (isRec()) {
+    if (activeTab==='low') {
+      ins.push('This is the recommended practical launch-stage setup (75/100). Clinics is the optimal early-stage channel for premium European baby formula — targeted healthcare relationships, lower competitive intensity, and a customer base that values product safety and provenance over platform convenience.');
+      ins.push('Small Batch Import with Air shipping delivers 4-day lead times with no DC commitment, no 3PL contract, and no FBA prep overhead. Lean Inventory keeps holding costs minimal at a stage where demand volume and order predictability are still being established.');
+      ins.push('Low compliance investment is appropriate and realistic for launch-stage import volumes. FDA scrutiny is proportionally lower at low order frequency. As volume scales — typically beyond month 12 — upgrading to medium compliance becomes a priority to manage growing regulatory exposure.');
+      ins.push('This model is the correct starting point, not the final network. Once demand stabilizes at a moderate level, the recommended transition is to 3PL fulfillment, Amazon channel, dual-country sourcing, safety stock, and medium compliance investment.');
+    } else if (activeTab==='mod') {
+      ins.push('This is the recommended growth-stage setup (78/100 in the calibrated moderate-demand workbook). It is designed for a stable demand environment after the uncertain launch stage has passed.');
+      ins.push('3PL with Amazon channel and Safety Stock provides better service levels, higher scale readiness, and stronger resilience than the launch-stage model — justified once volume is sufficient to absorb the higher fixed cost base.');
+      ins.push('Medium compliance at moderate demand is appropriate — FDA scrutiny at this volume is manageable with solid documentation. The cost increase from low compliance is offset by lower regulatory risk.');
+      ins.push('Dual-country sourcing adds resilience without the coordination overhead of multi-country sourcing — the right balance for a growth-stage startup that needs supply security but not full geographic diversification.');
+    } else {
+      ins.push('This is the top-scoring configuration in the high-demand workbook (69/100). At scale, Ocean freight becomes cost-essential — air shipping creates prohibitive cost pressure at high volumes.');
+      ins.push('3PL with Amazon channel provides the right balance of operational scalability and brand reach. At high demand, the 3PL fee structure is justified by service levels and capacity support.');
+      ins.push('Dual-country sourcing at high demand strengthens supply resilience without the full coordination complexity of multi-country networks — this is the key upgrade from single-country sourcing that drives the top score in the updated high-demand workbook.');
+      ins.push('Lead times of 30 days are standard for ocean freight at this volume tier. Demand forecasting and safety stock calibration become the primary operational priorities to manage this transit duration.');
+    }
+  } else {
+    if (activeTab==='low') {
+      if (['3pl','fba','onedc','rdcs'].includes(s.fulfillment))
+        ins.push('This configuration is over-built for low demand. Fixed infrastructure overhead (3PL fees, FBA prep, DC setup) is difficult to justify at low order volumes. The recommended launch setup uses Small Batch Import instead.');
+      if (s.fulfillment==='batch' && s.shipping==='air')
+        ins.push('Small Batch Import with Air shipping is the foundation of the recommended launch-stage setup. Channel choice, compliance level, and inventory strategy are the primary variables determining overall fit from here.');
+      if (s.fulfillment==='drop')
+        ins.push('Drop-shipping scores lower than Small Batch Import at low demand. Small Batch provides better margin, lower cost, and stronger overall fit while maintaining operational flexibility.');
+      if (s.shipping==='ocean')
+        ins.push('Ocean shipping at low demand extends lead times to 22–28 days and reduces overall fit. Air shipping is more appropriate for the launch stage where speed and flexibility matter most.');
+      if (s.channel==='clinics')
+        ins.push('Clinics is the recommended launch-stage channel in this workbook. Targeted healthcare relationships reduce customer acquisition cost, lower competitive intensity, and align well with the product safety and provenance narrative that premium European baby formula requires.');
+    }
+    if (activeTab==='mod') {
+      if (s.fulfillment==='3pl' && s.sourcing==='dual' && s.inventory==='safety')
+        ins.push('3PL with dual-country sourcing and safety stock is the backbone of the recommended growth-stage setup. This combination delivers the best balance of resilience, scale readiness, and overall fit in the moderate-demand workbook.');
+      if (s.compliance==='low')
+        ins.push('Low compliance investment significantly increases regulatory risk at moderate demand. FDA scrutiny at this volume requires solid documentation — consider upgrading to medium compliance.');
+      if (s.fulfillment==='batch')
+        ins.push('Small Batch Import can be viable at moderate demand as a transitional option, but 3PL provides better service levels, scale readiness, and supplier leverage once volumes are sufficient.');
+    }
+    if (activeTab==='high') {
+      if (s.shipping!=='ocean')
+        ins.push('All high-demand scenarios in the workbook use Ocean freight. Air or Parcel shipping at high volume creates significant cost pressure that reduces contribution margin and overall fit substantially.');
+      if (['drop','batch'].includes(s.fulfillment))
+        ins.push('Drop-shipping and Small Batch Import are not modeled at high demand scale. One DC, Multi-node RDCs, 3PL, and Amazon FBA are the appropriate fulfillment models for scaled operations.');
+      if (s.channel==='niche')
+        ins.push('Niche high-end retailer channel scores notably higher on contribution margin in the high-demand workbook, reflecting better price realization for premium European baby formula at scale.');
+    }
+    if (ins.length<3)
+      ins.push(`Overall strategic fit reflects the calibrated scenario workbook for ${activeTab==='low'?'the launch stage':activeTab==='mod'?'the growth stage':'scaled operations'}. Scores above 70 indicate strong alignment; below 45 indicates meaningful structural gaps.`);
+    if (ins.length<4)
+      ins.push('Supply chain design must evolve with demand. The correct launch-stage model is not the correct growth-stage model — the Comparison Dashboard is calibrated to show exactly where those transitions become necessary.');
+  }
+  document.getElementById('insights-list').innerHTML = ins.slice(0,5).map(t =>
+    `<div class="insight-item"><div class="insight-dot"></div><div class="insight-text">${t}</div></div>`
+  ).join('');
+}
+
+// ─── Scenario table ───────────────────────────────────────────────────────────
+function buildScenarioTable(row) {
+  const s = state();
+  const fLbls = {drop:'Drop-shipping',batch:'Small Batch Import','3pl':'3PL',fba:'Amazon FBA',onedc:'One DC',rdcs:'Multi-node RDCs'};
+  const stageFit = isRec()
+    ? (activeTab==='low'?'Recommended for first 6 months':activeTab==='mod'?'Recommended after demand stabilizes':'Recommended for scaled operations')
+    : (row[OVR]>=65?'Strong for this demand stage':row[OVR]>=50?'Viable for this demand stage':row[OVR]>=38?'Marginal for this demand stage':'Weak for this demand stage');
+  let tradeoff='', priority='';
+  if      (s.fulfillment==='drop')   { tradeoff='Maximum flexibility, no inventory risk — but weak margins and slow lead times'; priority='Build compliance documentation before scaling volume'; }
+  else if (s.fulfillment==='batch')  { tradeoff='Good margin and speed with low infrastructure commitment — limited capacity ceiling'; priority=isRec()?'Lock in a reliable supplier and document import procedures before volume grows':'Scale batch size and plan transition to 3PL as demand stabilizes'; }
+  else if (s.fulfillment==='3pl')    { tradeoff='Strong service and scale readiness — higher holding cost and spoilage exposure'; priority='Demand forecasting accuracy and safety stock calibration'; }
+  else if (s.fulfillment==='fba')    { tradeoff='Best last-mile experience — high fee burden and platform dependency risk'; priority='Margin defense through pricing discipline and volume growth'; }
+  else if (s.fulfillment==='onedc')  { tradeoff='Cost-efficient at scale — long lead times with ocean freight, high setup cost'; priority='Inventory positioning and demand planning to offset ocean transit delays'; }
+  else { tradeoff='Highest scale readiness and resilience — most complex and capital-intensive structure'; priority='Network optimisation and demand concentration to justify multi-node investment'; }
+  if (s.compliance==='low') priority='Urgently increase compliance investment — highest-priority structural risk in the model';
+  const rows=[
+    ['Dashboard Stage', activeTab==='low'?'Low Demand — Launch Stage':activeTab==='mod'?'Moderate Demand — Growth Stage':'High Demand — Scaled Operations'],
+    ['Current Operating Model', fLbls[s.fulfillment]],
+    ['Stage Fit Assessment', stageFit],
+    ['Overall Strategic Fit', `${row[OVR]}/100 — ${overallLabel(row[OVR])[0]}`],
+    ['Key Structural Trade-off', tradeoff],
+    ['Top Managerial Priority', priority]
+  ];
+  document.getElementById('scenario-tbody').innerHTML = rows.map(([k,v]) =>
+    `<tr><td style="font-weight:600;color:var(--text2);width:36%">${k}</td><td>${v}</td></tr>`
+  ).join('');
+}
+
+// ─── Radar chart (USC Cardinal theme) ─────────────────────────────────────────
+function drawRadar(dims) {
+  const canvas = document.getElementById('radar-canvas');
+  const ctx = canvas.getContext('2d');
+  const W=canvas.width, H=canvas.height, cx=W/2, cy=H/2+5;
+  const r=Math.min(W,H)/2-45, n=dims.length;
+  ctx.clearRect(0,0,W,H);
+  // Grid rings
+  [.25,.5,.75,1].forEach(frac => {
+    ctx.beginPath();
+    for(let i=0;i<n;i++){const a=(2*Math.PI*i/n)-Math.PI/2;const x=cx+Math.cos(a)*r*frac,y=cy+Math.sin(a)*r*frac;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}
+    ctx.closePath(); ctx.strokeStyle='rgba(180,180,180,.35)'; ctx.lineWidth=1; ctx.stroke();
+    if(frac===.5||frac===1){ctx.fillStyle='rgba(136,136,136,.55)';ctx.font='9px system-ui';ctx.fillText(frac===1?'100':'50',cx+4,cy-r*frac+3);}
+  });
+  // Spokes
+  dims.forEach((_,i)=>{
+    const a=(2*Math.PI*i/n)-Math.PI/2;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r);
+    ctx.strokeStyle='rgba(180,180,180,.35)';ctx.lineWidth=1;ctx.stroke();
+  });
+  // Fill polygon
+  ctx.beginPath();
+  dims.forEach((d,i)=>{const a=(2*Math.PI*i/n)-Math.PI/2;const frac=d.value/100;const x=cx+Math.cos(a)*r*frac,y=cy+Math.sin(a)*r*frac;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+  ctx.closePath();ctx.fillStyle='rgba(153,0,0,.1)';ctx.fill();ctx.strokeStyle='#990000';ctx.lineWidth=2;ctx.stroke();
+  // Dots
+  dims.forEach((d,i)=>{const a=(2*Math.PI*i/n)-Math.PI/2;const frac=d.value/100;const x=cx+Math.cos(a)*r*frac,y=cy+Math.sin(a)*r*frac;ctx.beginPath();ctx.arc(x,y,4,0,2*Math.PI);ctx.fillStyle='#990000';ctx.fill();});
+  // Labels
+  ctx.font='9.5px system-ui';
+  dims.forEach((d,i)=>{
+    const a=(2*Math.PI*i/n)-Math.PI/2;
+    const lx=cx+Math.cos(a)*(r+26),ly=cy+Math.sin(a)*(r+26);
+    ctx.fillStyle='#555555';
+    ctx.textAlign=lx>cx+5?'left':lx<cx-5?'right':'center';
+    ctx.textBaseline=ly>cy+5?'top':ly<cy-5?'bottom':'middle';
+    const words=d.label.split(' ');
+    if(words.length>=3){
+      const mid=Math.ceil(words.length/2);
+      const l1=words.slice(0,mid).join(' '),l2=words.slice(mid).join(' ');
+      const lh=11;
+      const yAdj=ctx.textBaseline==='bottom'?-lh/2:ctx.textBaseline==='top'?lh/2:0;
+      ctx.fillText(l1,lx,ly-lh/2+yAdj);ctx.fillText(l2,lx,ly+lh/2+yAdj);
+    } else {ctx.fillText(d.label,lx,ly);}
+  });
+}
+
+function buildDimLegend(dims) {
+  const colors=['#990000','#6b0000','#cc0000','#b45309','#0f766e','#15803d'];
+  document.getElementById('dim-legend').innerHTML=dims.map((d,i)=>
+    `<div class="dim-row"><div class="dim-color" style="background:${colors[i%6]}"></div><div class="dim-name">${d.label}</div><div class="dim-bar-wrap"><div class="dim-bar" style="width:${d.value}%;background:${colors[i%6]}"></div></div><div class="dim-val">${d.value}</div></div>`
+  ).join('');
+}
+
+function buildRiskBars(risks) {
+  document.getElementById('risk-bars').innerHTML=risks.map(r=>{
+    const color=r.value>=70?'#b91c1c':r.value>=42?'#b45309':'#15803d';
+    const label=r.value>=70?'High':r.value>=42?'Moderate':'Low';
+    return`<div class="risk-row"><div class="risk-label"><span class="risk-name">${r.name}</span><span class="risk-score-txt" style="color:${color}">${label} (${r.value})</span></div><div class="risk-track"><div class="risk-fill" style="width:${r.value}%;background:${color}"></div></div></div>`;
+  }).join('');
+}
+
+// ─── Main update ──────────────────────────────────────────────────────────────
+function update() {
+  const row=lookup();
+  const cost=row[COST];
+  document.getElementById('kpi-cost').textContent='$'+cost.toFixed(2);
+  const mgn=row[MGN],mgnPct=Math.round(mgn*100);
+  document.getElementById('kpi-margin').textContent=mgnPct+'%';
+  document.getElementById('kpi-margin-sub').textContent=
+    mgnPct>=35?'Commercially viable at this stage':
+    mgnPct>=18?'Thin — monitor cost structure closely':
+    mgnPct>=5 ?'Under pressure — limited commercial viability':'Near or below breakeven';
+  const lead=row[LEAD];
+  document.getElementById('kpi-lead').textContent=lead+' days';
+  setBadge('kpi-lead-badge',...(lead<=5?['Fast','badge-green']:lead<=14?['On-Time','badge-teal']:lead<=25?['Slow','badge-amber']:['Very Slow','badge-red']));
+  const cRisk=row[CRISK],sRisk=row[SRISK],res=row[RES],scl=row[SCL],ovr=row[OVR];
+  document.getElementById('kpi-comp').textContent=cRisk+'/100';  setBadge('kpi-comp-badge',...riskLabel(cRisk));
+  document.getElementById('kpi-spoil').textContent=sRisk+'/100'; setBadge('kpi-spoil-badge',...riskLabel(sRisk));
+  document.getElementById('kpi-res').textContent=res+'/100';     setBadge('kpi-res-badge',...resLabel(res));
+  document.getElementById('kpi-scale').textContent=scl+'/100';   setBadge('kpi-scale-badge',...scaleLabel(scl));
+  document.getElementById('kpi-overall').textContent=ovr+'/100'; setBadge('kpi-overall-badge',...overallLabel(ovr));
+  const ev=calcEnergy();
+  document.getElementById('kpi-energy').textContent=ev+'/100';
+  setBadge('kpi-energy-badge',...(ev>=65?['High','badge-red']:ev>=45?['Moderate','badge-amber']:['Low','badge-green']));
+  buildRec(row);buildInsights(row);buildScenarioTable(row);
+  const costEff=Math.round(Math.max(10,Math.min(95,95-(cost-11)*(85/37))));
+  const mgnScore=Math.round(Math.max(10,Math.min(95,10+mgnPct*(85/40))));
+  const dims=[
+    {label:'Cost Efficiency Score',value:costEff},
+    {label:'Speed Score',          value:Math.max(10,Math.min(95,95-lead*2))},
+    {label:'Compliance Score',     value:Math.max(5,100-cRisk)},
+    {label:'Resilience Score',     value:res},
+    {label:'Scale Readiness Score',value:scl},
+    {label:'Margin Score',         value:mgnScore}
+  ];
+  drawRadar(dims);buildDimLegend(dims);
+  const s=state();
+  const tariff=Math.min(88,Math.max(10,35+(s.sourcing==='multi'?20:s.sourcing==='dual'?8:0)+(activeTab==='high'?12:0)-(s.compliance==='high'?12:s.compliance==='med'?4:0)));
+  buildRiskBars([
+    {name:'Compliance / Regulatory',value:cRisk},
+    {name:'Tariff Exposure',        value:tariff},
+    {name:'Energy Vulnerability',   value:ev},
+    {name:'Spoilage / Expiration',  value:sRisk},
+    {name:'Service Failure',        value:Math.round(Math.min(90,Math.max(10,cRisk*0.3+(100-res)*0.3+(lead>20?20:lead>10?10:5))))}
+  ]);
+}
+
+let presentMode=false;
+function togglePresent(){
+  presentMode=!presentMode;
+  document.body.classList.toggle('present-mode',presentMode);
+  document.getElementById('btn-present-text').textContent=presentMode?'Exit Presentation':'Presentation Mode';
+  setTimeout(()=>update(),50);
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+switchTab('low');
+</script>
+</body>
+</html>
